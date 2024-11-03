@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from application import schemas, crud
+from application import schemas, crud, utils
 from dependencies import get_session
 
 
@@ -77,6 +77,20 @@ def create_temperature(
     return crud.create_temperature(
         temperature=temperature, db_session=db_session
     )
+
+
+@router.post("/temperatures/update")
+async def update_temperatures(db_session: Session = Depends(get_session)):
+    cities = crud.get_all_cities(db_session)
+    for city in cities:
+        temperature = await utils.get_temperature_from_weatherapi(city.name)
+        crud.create_temperature(
+            db_session=db_session,
+            temperature=schemas.TemperatureCreate(
+                city_id=city.id, temperature=temperature
+            )
+        )
+    return {"message": "Temperatures updated"}
 
 
 @router.get("/temperatures/{temp_id}", response_model=schemas.TemperatureInfo)
