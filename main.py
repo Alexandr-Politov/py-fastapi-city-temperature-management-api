@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -62,3 +64,42 @@ def update_city(
 def delete_city(city_id: int, db_session: Session = Depends(get_session)):
     crud.delete_city(city_id=city_id, db_session=db_session)
     return {"message": "City deleted successfully"}
+
+
+@app.get("/temperatures/", response_model=list[schemas.TemperatureInfo])
+def read_all_temperatures(
+        city_id: Optional[int] = None,
+        db_session: Session = Depends(get_session)):
+    return crud.get_all_temperatures(db_session=db_session, city_id=city_id)
+
+
+@app.post("/temperatures/", response_model=schemas.TemperatureInfo)
+def create_temperature(
+        temperature: schemas.TemperatureCreate,
+        db_session: Session = Depends(get_session)
+):
+    db_city = crud.get_city_by_id(
+        city_id=temperature.city_id, db_session=db_session
+    )
+    if not db_city:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="City with the specified ID does not exist"
+        )
+
+    return crud.create_temperature(
+        temperature=temperature, db_session=db_session
+    )
+
+
+@app.get("/temperatures/{temp_id}", response_model=schemas.TemperatureInfo)
+def read_single_temperature(
+        temp_id: int,
+        db_session: Session = Depends(get_session)
+) -> schemas.TemperatureInfo:
+    db_temperature = crud.get_temperature_by_id(
+        temperature_id=temp_id, db_session=db_session
+    )
+    if not db_temperature:
+        raise HTTPException(status_code=404, detail="Temperature not found")
+    return db_temperature
